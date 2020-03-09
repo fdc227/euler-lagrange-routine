@@ -1,0 +1,30 @@
+q{1..10}::bash  // p1,p2,p3 :: python
+
+E, A, D, F, P, Q :: python
+
+S1 = x**3 + x**2 + x
+S2 = X**3 - 2x
+
+k1, k2, k3 :: python
+
+k1= q{1..10} :: bash
+k2 = q1,q2,q3,q4 :: python
+k3 = q{1..10}_dot :: bash
+
+integral(diff(S1*k1+S2*k2, t), x)
+integral(diff(S1*k3), x)
+
+k1= q{1..10} :: bash
+k2 = q1,q2,q3,q4 :: python
+k3 = q{1..10}_dot :: bash
+
+integral(diff(S1*k1+S2*k2, t), x)
+integral(diff(S1*k3), x)
+
+arange(1,15) :: numpy
+
+1e10, 3e-5, 20, 1e-5, 1, 2 :: python
+
+True
+
+arange(0, 100, 1000) :: numpy
