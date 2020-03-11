@@ -1,17 +1,17 @@
 from sympy import *
 import pickle
-from shape_gen import shape_gen
 from multiprocessing.pool import Pool
 from sympy.physics.mechanics import msubs
+from string_functions import *
 
 container_raw = open('container2.pkl', 'rb')
 container = pickle.load(container_raw)
 
 q = container[0]
 dummie = container[3]
-T_replace = container[4]
+T_replace = change_to_qt(container[4], q)
 T_format = container[5]
-U_replace = container[6]
+U_replace = change_to_qt(container[6], q)
 U_format = container[7]
 
 ######################################################
@@ -44,107 +44,53 @@ for i in range(len(q_sym)):
     coordinate_subs[q_func_dt[i]] = q_sym_dt[i]
     coordinate_subs[q_func[i]] = q_sym[i]
 
-# # other_functions
-# dummie_symbol_func = []
-# for i in dummie:
-#     globals()[i] = Function(i)(t)
-#     dummie_symbol_func.append(globals()[i])
-
-###############           END          ##################
-
 #########################################################
 ############# Sympify formated functions ################
 #########################################################
 
-T = []
-U = []
+T_strings = []
+U_strings = []
 
-T_new_replace_dict = {} # Replacing the strings in the replace_dict for sympy functions
-U_new_replace_dict = {}
-T_new_args = []
-U_new_args = []
-T_new_values = []
-U_new_values = []
+# GENERATING STRINGS OF FORMATTED FUNCTIONS WITH DUMMIES REPLACED
+for term in T_format:
+    T_strings+= function_format_convert(term, T_replace)
+for term in U_format:
+    U_strings+= function_format_convert(term, U_replace)
 
-for i in T_replace_list:
-    if i in dummie_symbols:
-        T_new_args.append(dummie_symbol_func[dummie_symbols.index(i)])
-    else:
-        raise Exception (f'value {i} not in the list of other functions')
-for i in U_replace_list:
-    if i in dummie_symbols:
-        U_new_args.append(dummie_symbol_func[dummie_symbols.index(i)])
-    else:
-        raise Exception (f'value {i} not in the list of other functions')
+tn = len(T_strings)
+un = len(U_strings)
+# SYMPIFYING THE ABOVE LISTS
+# T_expr = []
+# U_expr = []
+# T_index = [i for i in range(len(T_expr))]
 
-for i in T_replace_list:
-    value_list = []
-    for j in T_replace_list[i]:
-        if j in generalized_coordinates:
-            value_list.append(q_func[generalized_coordinates.index(j)])
-        else:
-            value_list.append(sympify(j))
-    T_new_values.append(value_list)
-for i in U_replace_list:
-    value_list = []
-    for j in U_replace_list[i]:
-        if j in generalized_coordinates:
-            value_list.append(q_func[generalized_coordinates.index(j)])
-        else:
-            value_list.append(sympify(j))
-    U_new_values.append(value_list)
-
-for i in range(len(T_new_args)):
-    T_new_replace_dict[T_new_args[i]] = T_new_values[i]
-for i in range(len(U_new_args)):
-    U_new_replace_dict[U_new_args[i]] = U_new_values[i]
-
-T_complete_replace_list = [] # Creating complete detailed replace dictionaries for the substitution function later
-for i in range(len(T_new_values[0])):
-    local_list = []
-    for j in T_new_replace_dict:
-        local_list.append((j, T_new_replace_dict[j][i]))
-    T_complete_replace_list.append(local_list)
-U_complete_replace_list = [] # Creating complete detailed replace dictionaries for the substitution function later
-for i in range(len(U_new_values[0])):
-    local_list = []
-    for j in U_new_replace_dict:
-        local_list.append((j, U_new_replace_dict[j][i]))
-    U_complete_replace_list.append(local_list)
-
-# Generate the list of T and U expressions by replacing dummie variables with real ones
-
-T_expr = []
-U_expr = []
-for i in range(len(T_new_values[0])):
-    T_expr.append(T.subs(T_complete_replace_list[i]))
-for i in range(len(U_new_values[0])):
-    U_expr.append(U.subs(U_complete_replace_list[i]))
 
 # print(T_expr)
 
 def T_gen(i):
-    T_local = T_expr[i].doit()
+    T_local = sympify(T_strings[i])
     local_list = []
     for j in q_func_dt:
         rs = diff(diff(T_local, j), t)
         local_list.append(msubs(rs, coordinate_subs))
-    print(f'Now generating {i+1}/{len(T_expr)} term of T')
+    print(f'Now generating {i+1}/{len(tn)} term of T')
     return local_list
 
 def U_gen(i):
-    U_local = U_expr[i].doit()
+    U_local = sympify(U_strings[i])
     local_list = []
     for j in q_func:
         rs = diff(U_local, j)
         local_list.append(msubs(rs, coordinate_subs))
-    print(f'Now generating {i+1}/{len(U_expr)} term of U')
+    print(f'Now generating {i+1}/{len(un)} term of U')
     return local_list
 
-MP_index = [r for r in range(len(T_expr))]
-MP_pool = Pool(len(T_expr))
-T_list = MP_pool.map(T_gen, MP_index)
-U_list = MP_pool.map(U_gen, MP_index)
+T_index = [r for r in range(len(tn))]
+T_pool = Pool(len(tn))
+U_index = [r for r in range(len(un))]
+U_pool = Pool(len(un))
+T_list = T_pool.map(T_gen, T_index)
+U_list = U_pool.map(U_gen, U_index)
 
 T_sf = Matrix(T_list).T.tolist()
 U_sf = Matrix(U_list).T.tolist()
